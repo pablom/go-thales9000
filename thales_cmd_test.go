@@ -11,6 +11,7 @@ import (
 	"crypto/sha512"
 	"hash"
 	"crypto/sha1"
+	"fmt"
 )
 const (
 	TEST_THALES_HSM_HOST     string = "10.101.70.194:1500"
@@ -106,7 +107,7 @@ func verifySignatureTest(t *testing.T, conn net.Conn, mac []byte, pubBytes []byt
 //      by internal Thales verification command
 //      by external public key generation
 // =============================================================================
-func TestGenerateRSAkeyPair(t *testing.T) {
+func xTestGenerateRSAkeyPair(t *testing.T) {
 	conn, err := net.DialTimeout("tcp", TEST_THALES_HSM_HOST, time.Duration(HSM_CONNECTION_TIMEOUT)*time.Second)
 	if err != nil {
 		t.Fatalf("[THALES]: Failed to HSM connect: %s\n", err)
@@ -121,7 +122,7 @@ func TestGenerateRSAkeyPair(t *testing.T) {
 // =============================================================================
 //
 // =============================================================================
-func TestGenerateThalesRSAkeyPair(t *testing.T) {
+func xTestGenerateThalesRSAkeyPair(t *testing.T) {
 	conn, err := net.DialTimeout("tcp", TEST_THALES_HSM_HOST, time.Duration(HSM_CONNECTION_TIMEOUT)*time.Second)
 	if err != nil {
 		t.Fatalf("[THALES]: Failed to HSM connect: %s\n", err)
@@ -144,4 +145,27 @@ func TestGenerateThalesRSAkeyPair(t *testing.T) {
 	if err := rsa.VerifyPKCS1v15(key.PublicKey, crypto.SHA256, hashed[:], sign); err != nil {
 		t.Fatalf("[THALES]: Failed to verify RSA signature by output private key: %s\n", err)
 	}
+}
+
+func TestEncryptDecryptThales(t *testing.T) {
+	conn, err := net.DialTimeout("tcp", TEST_THALES_HSM_HOST, time.Duration(HSM_CONNECTION_TIMEOUT)*time.Second)
+	if err != nil {
+		t.Fatalf("[THALES]: Failed to HSM connect: %s\n", err)
+	}
+	defer conn.Close()
+
+	key := "U1D1225FC6487FCDB995CC6DACE114171"
+	msg := []byte("MMM-VVV0")
+
+	data, err := thalesEncryptDataBlock(conn, msg, key)
+	if err != nil {
+		t.Fatalf("[THALES]: Couldn't ecrypt data block: %s\n", err)
+	}
+
+	out_msg, err := thalesDecryptDataBlock(conn, data, key)
+	if err != nil {
+		t.Fatalf("[THALES]: Couldn't decrypt data block: %s\n", err)
+	}
+
+	fmt.Println(out_msg)
 }

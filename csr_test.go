@@ -4,6 +4,7 @@ import (
 	"testing"
 	"net"
 	"time"
+	"io/ioutil"
 )
 
 const (
@@ -11,7 +12,7 @@ const (
 	csrCN       = "CN"
 )
 
-func TestCreateCertificateSigningRequest(t *testing.T) {
+func xTestCreateCertificateSigningRequest(t *testing.T) {
 
 	conn, err := net.DialTimeout("tcp", TEST_THALES_HSM_HOST, time.Duration(HSM_CONNECTION_TIMEOUT)*time.Second)
 	if err != nil {
@@ -46,5 +47,21 @@ func TestCreateCertificateSigningRequest(t *testing.T) {
 	}
 	if csrCN != rawCsr.Subject.CommonName {
 		t.Fatalf("Expect CommonName to be %v instead of %v", csrCN, rawCsr.Subject.CommonName)
+	}
+
+	// Export certificate request to file
+	b, err := csr.Export()
+	if err != nil {
+		t.Fatal("Failed to export certificate request as pem bytes:", err)
+	}
+
+	err = ioutil.WriteFile("test.csr", b, 0644)
+	if err != nil {
+		t.Fatal("Failed export to file certificate request:", err)
+	}
+
+	err = crsToCrt("/home/pm/OpenWay/repo/tools/ssltool/sslCA/owca.crt", "/home/pm/OpenWay/repo/tools/ssltool/sslCA/owca.key", "test.csr", "test.crt", "")
+	if err != nil {
+		t.Fatal("Failed to get crt:", err)
 	}
 }

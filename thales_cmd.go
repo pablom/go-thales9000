@@ -8,6 +8,7 @@ import (
 	"encoding/asn1"
 	"crypto"
 	"errors"
+	"encoding/hex"
 )
 
 const (
@@ -20,7 +21,6 @@ const (
 
 	THALES_NO_HASH_SIGN    crypto.Hash = 70
 )
-
 
 var hashThalesType = map[crypto.Hash] string {
 	crypto.SHA1:      	 "01",
@@ -41,7 +41,7 @@ func thalesValidatePublicKey(conn net.Conn, pubBytes []byte) ([]byte,[]byte, err
 	const rqMsgID = "EQ" // Request message ID
 	const rsMsgID = "ER" // Response message ID
 
-	// leave 4 bytes at the start for length
+	// leave 2 bytes at the start for length
 	b := bytes.NewBuffer(make([]byte, 2 ))
 	b.WriteString(THALES_HSM_HEADER)
 	b.WriteString(rqMsgID)
@@ -68,7 +68,7 @@ func thalesImportPublicKey(conn net.Conn, pubkeyBytes []byte) ([]byte,[]byte,err
 	const rqMsgID = "EO" // Request message ID
 	const rsMsgID = "EP" // Response message ID
 
-	// leave 4 bytes at the start for length
+	// leave 2 bytes at the start for length
 	b := bytes.NewBuffer(make([]byte, 2 ))
 	b.WriteString(THALES_HSM_HEADER)
 	b.WriteString(rqMsgID)
@@ -99,7 +99,7 @@ func thalesGenerateRSASignature(conn net.Conn, msg []byte, privkeyBytes []byte, 
 		return nil, errors.New("thales9000: unknown hash function")
 	}
 
-	// leave 4 bytes at the start for length
+	// leave 2 bytes at the start for length
 	b := bytes.NewBuffer(make([]byte, 2 ))
 	b.WriteString(THALES_HSM_HEADER)
 	b.WriteString(rqMsgID)
@@ -141,7 +141,7 @@ func thalesValidateSignatureRSA(conn net.Conn, msg []byte, sign []byte, mac []by
 		return errors.New("thales9000: unknown hash function")
 	}
 
-	// leave 4 bytes at the start for length
+	// leave 2 bytes at the start for length
 	b := bytes.NewBuffer(make([]byte, 2 ))
 	b.WriteString(THALES_HSM_HEADER)
 	b.WriteString(rqMsgID)
@@ -182,7 +182,7 @@ func thalesGenerateRSAKeyPairReq(conn net.Conn, rsaBits int) ([]byte, error) {
 	const rqMsgID = "EI" // Request message ID
 	const rsMsgID = "EJ" // Response message ID
 
-	// leave 4 bytes at the start for length
+	// leave 2 bytes at the start for length
 	b := bytes.NewBuffer(make([]byte, 2 ))
 
 	b.WriteString(THALES_HSM_HEADER)
@@ -242,5 +242,86 @@ func thalesGenerateRSAKeyPair(conn net.Conn, rsaBits int) ([]byte,[]byte,[]byte,
 	}
 
 	return mac, pubBytes, privBytes, nil
+}
+
+func thalesDiagnostics(conn net.Conn) ([]byte,error) {
+	const rqMsgID = "NC" // Request message ID
+	const rsMsgID = "ND" // Response message ID
+	// leave 2 bytes at the start for length
+	b := bytes.NewBuffer(make([]byte, 2 ))
+	b.WriteString(THALES_HSM_HEADER)
+	b.WriteString(rqMsgID)
+
+	// Send request
+	if err := sendThalesRequest(conn, b); err != nil {
+		return nil, err
+	}
+	// Try to read response
+	br, err := readThalesResponse(conn, []byte(rsMsgID))
+	if err != nil {
+		return nil, err
+	}
+
+	return br, nil
+}
+// =============================================================================
+//  Encrypt Data Block
+// =============================================================================
+func thalesEncryptDataBlock(conn net.Conn, msg []byte, key string) ([]byte,error) {
+	const rqMsgID = "M0" // Request message ID
+	const rsMsgID = "M1" // Response message ID
+	// leave 2 bytes at the start for length
+	b := bytes.NewBuffer(make([]byte, 2 ))
+	b.WriteString(THALES_HSM_HEADER)
+	b.WriteString(rqMsgID)
+	b.WriteString("00")  // encryption mode ECB
+	b.WriteString("0")   // format of the input message: Binary
+	b.WriteString("0")   // output format: Binary
+	b.WriteString("00A")
+	b.WriteString(key)
+	b.WriteString(fmt.Sprintf("%04X", len(msg)))
+	b.Write(msg)
+
+	fmt.Println(hex.Dump(b.Bytes()))
+
+	// Send request
+	if err := sendThalesRequest(conn, b); err != nil {
+		return nil, err
+	}
+	// Try to read response
+	br, err := readThalesResponse(conn, []byte(rsMsgID))
+	if err != nil {
+		return nil, err
+	}
+
+	return br, nil
+}
+// =============================================================================
+//  Decrypt Data Block
+// =============================================================================
+func thalesDecryptDataBlock(conn net.Conn, msg []byte, key string) ([]byte,error) {
+	const rqMsgID = "M2" // Request message ID
+	const rsMsgID = "M3" // Response message ID
+	// leave 2 bytes at the start for length
+	b := bytes.NewBuffer(make([]byte, 2 ))
+	b.WriteString(THALES_HSM_HEADER)
+	b.WriteString(rqMsgID)
+	b.WriteString("00")  // encryption mode ECB
+	b.WriteString("0")   // format of the input message: Binary
+	b.WriteString("0")   // output format: Binary
+	b.WriteString("FFF")
+	b.WriteString(key)
+	b.WriteString(fmt.Sprintf("%04X", len(msg)))
+	// Send request
+	if err := sendThalesRequest(conn, b); err != nil {
+		return nil, err
+	}
+	// Try to read response
+	br, err := readThalesResponse(conn, []byte(rsMsgID))
+	if err != nil {
+		return nil, err
+	}
+
+	return br, nil
 }
 

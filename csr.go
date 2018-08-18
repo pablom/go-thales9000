@@ -55,8 +55,8 @@ func NewCertificateSigningRequestFromDER(derBytes []byte) *CertificateSigningReq
 //  with the given parameters
 // =============================================================================
 func CreateCertificateSigningRequest( key *rsaThalesPrivKey, organizationalUnit string, ipList []net.IP,
-	                                  domainList []string, organization string, country string, province string,
-	                                  locality string, commonName string) (*CertificateSigningRequest, error) {
+                                      domainList []string, organization string, country string, province string,
+                                      locality string, commonName string) (*CertificateSigningRequest, error) {
 
 	csrPkixName.CommonName = commonName
 
@@ -183,6 +183,7 @@ func checkSignature(csr *x509.CertificateRequest, algo x509.SignatureAlgorithm, 
 //  Export returns PEM-format bytes
 // =============================================================================
 func (c *CertificateSigningRequest) Export() ([]byte, error) {
+
 	pemBlock := &pem.Block{
 		Type:    csrPEMBlockType,
 		Headers: nil,
