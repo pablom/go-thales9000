@@ -12,6 +12,7 @@ import (
 	"hash"
 	"crypto/sha1"
 	"fmt"
+	"strings"
 )
 const (
 	TEST_THALES_HSM_HOST     string = "10.101.70.194:1500"
@@ -107,7 +108,7 @@ func verifySignatureTest(t *testing.T, conn net.Conn, mac []byte, pubBytes []byt
 //      by internal Thales verification command
 //      by external public key generation
 // =============================================================================
-func xTestGenerateRSAkeyPair(t *testing.T) {
+func TestGenerateRSAkeyPair(t *testing.T) {
 	conn, err := net.DialTimeout("tcp", TEST_THALES_HSM_HOST, time.Duration(HSM_CONNECTION_TIMEOUT)*time.Second)
 	if err != nil {
 		t.Fatalf("[THALES]: Failed to HSM connect: %s\n", err)
@@ -122,7 +123,7 @@ func xTestGenerateRSAkeyPair(t *testing.T) {
 // =============================================================================
 //
 // =============================================================================
-func xTestGenerateThalesRSAkeyPair(t *testing.T) {
+func TestGenerateThalesRSAkeyPair(t *testing.T) {
 	conn, err := net.DialTimeout("tcp", TEST_THALES_HSM_HOST, time.Duration(HSM_CONNECTION_TIMEOUT)*time.Second)
 	if err != nil {
 		t.Fatalf("[THALES]: Failed to HSM connect: %s\n", err)
@@ -147,14 +148,14 @@ func xTestGenerateThalesRSAkeyPair(t *testing.T) {
 	}
 }
 
-func TestEncryptDecryptThales(t *testing.T) {
+func xTestEncryptDecryptThales(t *testing.T) {
 	conn, err := net.DialTimeout("tcp", TEST_THALES_HSM_HOST, time.Duration(HSM_CONNECTION_TIMEOUT)*time.Second)
 	if err != nil {
 		t.Fatalf("[THALES]: Failed to HSM connect: %s\n", err)
 	}
 	defer conn.Close()
 
-	key := "U1D1225FC6487FCDB995CC6DACE114171"
+	key := "U35008F52E8B5F4CF0DB0FBF4E516EDDB"
 	msg := []byte("MMM-VVV0")
 
 	data, err := thalesEncryptDataBlock(conn, msg, key)
@@ -169,3 +170,46 @@ func TestEncryptDecryptThales(t *testing.T) {
 
 	fmt.Println(out_msg)
 }
+
+func TestThalesGenerateSymmetricKey(t *testing.T) {
+	conn, err := net.DialTimeout("tcp", TEST_THALES_HSM_HOST, time.Duration(HSM_CONNECTION_TIMEOUT)*time.Second)
+	if err != nil {
+		t.Fatalf("[THALES]: Failed to HSM connect: %s\n", err)
+	}
+	defer conn.Close()
+
+	_,err = thalesGenerateSymmetricKey(conn)
+
+	if err != nil {
+		t.Fatalf("[THALES]: Couldn't generate symmetric key: %s\n", err)
+	}
+}
+
+func TestThalesGenerateMAC(t *testing.T) {
+	conn, err := net.DialTimeout("tcp", TEST_THALES_HSM_HOST, time.Duration(HSM_CONNECTION_TIMEOUT)*time.Second)
+	if err != nil {
+		t.Fatalf("[THALES]: Failed to HSM connect: %s\n", err)
+	}
+	defer conn.Close()
+
+	mac := "0ECFBDB183EF325F"
+	clearKey := "0123456789ABCDEFABCDEF0123456789"
+	key := "U7B7B1BE6AFBA184A2A6201710459AC7B"     // ZAK key in HSM
+	msg := []byte("MMM-VVV0")
+
+	b,err := thalesGenerateMAC(conn, msg, key)
+
+	if err != nil {
+		t.Fatalf("[THALES]: Couldn't generate MAC: %s\n", err)
+	}
+
+	if !strings.EqualFold(string(b), mac) {
+		t.Fatalf("[THALES]: Invalid mac [clear key: %s]: %s\n\texpected: %s\n", clearKey, string(b), mac)
+	}
+
+	_, err = thalesVerifyMAC(conn, msg, string(mac), key)
+	if err != nil {
+		t.Fatalf("[THALES]: Couldn't verify MAC: %s\n", err)
+	}
+}
+

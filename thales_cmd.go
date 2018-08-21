@@ -264,6 +264,101 @@ func thalesDiagnostics(conn net.Conn) ([]byte,error) {
 
 	return br, nil
 }
+
+
+// =============================================================================
+//  Generate new key
+// =============================================================================
+func thalesGenerateSymmetricKey(conn net.Conn) ([]byte,error) {
+	const rqMsgID = "A0" // Request message ID
+	const rsMsgID = "A1" // Response message ID
+	// leave 2 bytes at the start for length
+	b := bytes.NewBuffer(make([]byte, 2 ))
+	b.WriteString(THALES_HSM_HEADER)
+	b.WriteString(rqMsgID)
+	b.WriteString("0")    // Generate key
+	b.WriteString("008")
+	b.WriteString("U")
+
+	// Send request
+	if err := sendThalesRequest(conn, b); err != nil {
+		return nil, err
+	}
+	// Try to read response
+	br, err := readThalesResponse(conn, []byte(rsMsgID))
+	if err != nil {
+		return nil, err
+	}
+
+	//fmt.Println(hex.Dump(br))
+
+	return br, nil
+}
+// =============================================================================
+//  Generate MAC
+// =============================================================================
+func thalesGenerateMAC(conn net.Conn, msg []byte, key string) ([]byte,error) {
+	const rqMsgID = "M6" // Request message ID
+	const rsMsgID = "M7" // Response message ID
+	// leave 2 bytes at the start for length
+	b := bytes.NewBuffer(make([]byte, 2 ))
+	b.WriteString(THALES_HSM_HEADER)
+	b.WriteString(rqMsgID)
+	b.WriteString("0")    // Only block of a single-block message
+	b.WriteString("0")    // Input Format Flag: binary
+	b.WriteString("1")    // MAC size, '0' : MAC size of 8 hex digits,  '1' : MAC size of 16 hex digits
+	b.WriteString("3")    // ISO 9797 MAC algorithm 3 (= ANSI X9.19 when used with a double-length key) (DES only)
+	b.WriteString("0")    // 0' : No padding
+	b.WriteString("008")  // ZAK key type
+	b.WriteString(key)
+	b.WriteString(fmt.Sprintf("%04X", len(msg)))
+	b.Write(msg)
+
+	// Send request
+	if err := sendThalesRequest(conn, b); err != nil {
+		return nil, err
+	}
+	// Try to read response
+	br, err := readThalesResponse(conn, []byte(rsMsgID))
+	if err != nil {
+		return nil, err
+	}
+
+	return br, nil
+}
+// =============================================================================
+//  Verify MAC
+// =============================================================================
+func thalesVerifyMAC(conn net.Conn, msg []byte, mac, key string) ([]byte,error) {
+	const rqMsgID = "M8" // Request message ID
+	const rsMsgID = "M9" // Response message ID
+	// leave 2 bytes at the start for length
+	b := bytes.NewBuffer(make([]byte, 2 ))
+	b.WriteString(THALES_HSM_HEADER)
+	b.WriteString(rqMsgID)
+	b.WriteString("0")    // Only block of a single-block message
+	b.WriteString("0")    // Input Format Flag: binary
+	b.WriteString("1")    // MAC size, '0' : MAC size of 8 hex digits,  '1' : MAC size of 16 hex digits
+	b.WriteString("3")    // ISO 9797 MAC algorithm 3 (= ANSI X9.19 when used with a double-length key) (DES only)
+	b.WriteString("0")    // 0' : No padding
+	b.WriteString("008")  // ZAK key type
+	b.WriteString(key)
+	b.WriteString(fmt.Sprintf("%04X", len(msg)))
+	b.Write(msg)
+	b.WriteString(mac)
+
+	// Send request
+	if err := sendThalesRequest(conn, b); err != nil {
+		return nil, err
+	}
+	// Try to read response
+	br, err := readThalesResponse(conn, []byte(rsMsgID))
+	if err != nil {
+		return nil, err
+	}
+
+	return br, nil
+}
 // =============================================================================
 //  Encrypt Data Block
 // =============================================================================
@@ -312,6 +407,7 @@ func thalesDecryptDataBlock(conn net.Conn, msg []byte, key string) ([]byte,error
 	b.WriteString("FFF")
 	b.WriteString(key)
 	b.WriteString(fmt.Sprintf("%04X", len(msg)))
+
 	// Send request
 	if err := sendThalesRequest(conn, b); err != nil {
 		return nil, err
