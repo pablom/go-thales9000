@@ -109,7 +109,7 @@ func parsePrivateKey(der []byte) (crypto.PrivateKey, error) {
 	return nil, fmt.Errorf("Failed to parse private key")
 }
 
-func crsToCrt( caCrtFile string, caKeyFile string, csrFile, outCrtFile string, password string ) error {
+func CsrToCrt( caCrtFile string, caKeyFile string, csrFile, outCrtFile string, password string ) error {
 
 	//var caPrivateKey *rsa.PrivateKey
 

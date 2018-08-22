@@ -60,7 +60,7 @@ func TestCreateCertificateSigningRequest(t *testing.T) {
 		t.Fatal("Failed export to file certificate request:", err)
 	}
 
-	err = crsToCrt("/home/pm/OpenWay/repo/tools/ssltool/sslCA/owca.crt", "/home/pm/OpenWay/repo/tools/ssltool/sslCA/owca.key", "test.csr", "test.crt", "")
+	err = CsrToCrt("/home/pm/OpenWay/repo/tools/ssltool/sslCA/owca.crt", "/home/pm/OpenWay/repo/tools/ssltool/sslCA/owca.key", "test.csr", "test.crt", "")
 	if err != nil {
 		t.Fatal("Failed to get crt:", err)
 	}
