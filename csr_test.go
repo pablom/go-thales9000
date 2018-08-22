@@ -12,7 +12,7 @@ const (
 	csrCN       = "CN"
 )
 
-func xTestCreateCertificateSigningRequest(t *testing.T) {
+func TestCreateCertificateSigningRequest(t *testing.T) {
 
 	conn, err := net.DialTimeout("tcp", TEST_THALES_HSM_HOST, time.Duration(HSM_CONNECTION_TIMEOUT)*time.Second)
 	if err != nil {

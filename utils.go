@@ -91,8 +91,6 @@ func readThalesResponse(conn net.Conn, msgID []byte) ([]byte, error) {
 	return nil, nil
 }
 
-
-
 func parsePrivateKey(der []byte) (crypto.PrivateKey, error) {
 	if key, err := x509.ParsePKCS1PrivateKey(der); err == nil {
 		return key, nil

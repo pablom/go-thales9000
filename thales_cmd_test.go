@@ -121,7 +121,8 @@ func TestGenerateRSAkeyPair(t *testing.T) {
 	//verifySignatureRsaBitsTest(t, conn,4096)
 }
 // =============================================================================
-//
+//  Thales test generate RSA key private.public pair and verify signature
+//  by public key
 // =============================================================================
 func TestGenerateThalesRSAkeyPair(t *testing.T) {
 	conn, err := net.DialTimeout("tcp", TEST_THALES_HSM_HOST, time.Duration(HSM_CONNECTION_TIMEOUT)*time.Second)
@@ -170,7 +171,9 @@ func xTestEncryptDecryptThales(t *testing.T) {
 
 	fmt.Println(out_msg)
 }
-
+// =============================================================================
+//  Thales test generate symmetric key commands
+// =============================================================================
 func TestThalesGenerateSymmetricKey(t *testing.T) {
 	conn, err := net.DialTimeout("tcp", TEST_THALES_HSM_HOST, time.Duration(HSM_CONNECTION_TIMEOUT)*time.Second)
 	if err != nil {
@@ -184,7 +187,9 @@ func TestThalesGenerateSymmetricKey(t *testing.T) {
 		t.Fatalf("[THALES]: Couldn't generate symmetric key: %s\n", err)
 	}
 }
-
+// =============================================================================
+//  Thales test generate & verify MAC commands
+// =============================================================================
 func TestThalesGenerateMAC(t *testing.T) {
 	conn, err := net.DialTimeout("tcp", TEST_THALES_HSM_HOST, time.Duration(HSM_CONNECTION_TIMEOUT)*time.Second)
 	if err != nil {

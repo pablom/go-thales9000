@@ -55,7 +55,7 @@ func thalesValidatePublicKey(conn net.Conn, pubBytes []byte) ([]byte,[]byte, err
 	if br, err := readThalesResponse(conn, []byte(rsMsgID)); err != nil {
 		return nil, nil, err
 	} else if len(br) != 0 {
-		return nil, nil, fmt.Errorf("Thales: invalid response public key validation")
+		return nil, nil, fmt.Errorf("thales9000: invalid response public key validation")
 	}
 
 	return  pubBytes[:4], pubBytes[4:], nil
@@ -213,7 +213,7 @@ func thalesGenerateRSAKeyPair(conn net.Conn, rsaBits int) ([]byte,[]byte,[]byte,
 
 	// Check RSA modulus length in bits, have to be between: 0320 ... 4096
 	if rsaBits < 320 || rsaBits > 4096 {
-		return nil, nil, nil, fmt.Errorf("Thales: Invalid RSA modulus length in bits")
+		return nil, nil, nil, fmt.Errorf("thales9000: Invalid RSA modulus length in bits")
 	}
 
 	// Try to generate RSA key pair
@@ -229,7 +229,7 @@ func thalesGenerateRSAKeyPair(conn net.Conn, rsaBits int) ([]byte,[]byte,[]byte,
 	}
 
 	if len(privBytes) == 0 {
-		return nil, nil, nil, fmt.Errorf("Thales: invalid response (missed private key data)")
+		return nil, nil, nil, fmt.Errorf("thales9000: invalid response (missed private key data)")
 	}
 
 	// Get public key bytes
@@ -243,7 +243,9 @@ func thalesGenerateRSAKeyPair(conn net.Conn, rsaBits int) ([]byte,[]byte,[]byte,
 
 	return mac, pubBytes, privBytes, nil
 }
-
+// =============================================================================
+//  Perform Thales diagnostics command
+// =============================================================================
 func thalesDiagnostics(conn net.Conn) ([]byte,error) {
 	const rqMsgID = "NC" // Request message ID
 	const rsMsgID = "ND" // Response message ID
@@ -264,8 +266,6 @@ func thalesDiagnostics(conn net.Conn) ([]byte,error) {
 
 	return br, nil
 }
-
-
 // =============================================================================
 //  Generate new key
 // =============================================================================
