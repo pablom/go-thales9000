@@ -54,7 +54,7 @@ func NewCertificateSigningRequestFromDER(derBytes []byte) *CertificateSigningReq
 //  CreateCertificateSigningRequest sets up a request to create a csr file
 //  with the given parameters
 // =============================================================================
-func CreateCertificateSigningRequest( key *rsaThalesPrivKey, organizationalUnit string, ipList []net.IP,
+func CreateCertificateSigningRequest( key *RsaThalesPrivKey, organizationalUnit string, ipList []net.IP,
                                       domainList []string, organization string, country string, province string,
                                       locality string, commonName string) (*CertificateSigningRequest, error) {
 

@@ -52,7 +52,7 @@ const (
 // =============================================================================
 //   CreateRSAKey creates a new Thales key using RSA algorithm
 // =============================================================================
-func CreateRSAKey(conn net.Conn, rsaBits int) (*rsaThalesPrivKey, error) {
+func CreateRSAKey(conn net.Conn, rsaBits int) (*RsaThalesPrivKey, error) {
 
 	/* Generate private - public key pair, skip mac response  */
 	_, pubBytes, privBytes, err := thalesGenerateRSAKeyPair(conn, rsaBits)
@@ -73,7 +73,7 @@ func CreateRSAKey(conn net.Conn, rsaBits int) (*rsaThalesPrivKey, error) {
 // =============================================================================
 //  Key contains a public-private Thales keypair
 // =============================================================================
-type rsaThalesPrivKey struct {
+type RsaThalesPrivKey struct {
 	*rsa.PublicKey
 	// byte buffer 'Private Key' is encrypted under LMK pair 34-35
 	// first 4 bytes length (in bytes) format: 4N
@@ -84,13 +84,13 @@ type rsaThalesPrivKey struct {
 // =============================================================================
 //  New instantiates a new Thales private key
 // =============================================================================
-func NewThalesPrivKey(cryptoPublicKey *rsa.PublicKey, privBytes []byte, c net.Conn) (*rsaThalesPrivKey) {
-	return &rsaThalesPrivKey{cryptoPublicKey, privBytes, c}
+func NewThalesPrivKey(cryptoPublicKey *rsa.PublicKey, privBytes []byte, c net.Conn) (*RsaThalesPrivKey) {
+	return &RsaThalesPrivKey{cryptoPublicKey, privBytes, c}
 }
 // =============================================================================
 //  New instantiates a new Thales private key from files
 // =============================================================================
-func NewThalesPrivKeyFromFiles(publicKeyPath, privateKeyPath string, c net.Conn) (*rsaThalesPrivKey,error) {
+func NewThalesPrivKeyFromFiles(publicKeyPath, privateKeyPath string, c net.Conn) (*RsaThalesPrivKey,error) {
 	var err error
 	var block *pem.Block
 
@@ -132,13 +132,13 @@ func NewThalesPrivKeyFromFiles(publicKeyPath, privateKeyPath string, c net.Conn)
 // =============================================================================
 //  Public returns the public key for Thales private key
 // =============================================================================
-func (pk *rsaThalesPrivKey) Public() crypto.PublicKey {
+func (pk *RsaThalesPrivKey) Public() crypto.PublicKey {
 	return pk.PublicKey
 }
 // =============================================================================
 //  Sign performs a signature using the Thales private key
 // =============================================================================
-func (pk *rsaThalesPrivKey) Sign(rand io.Reader, msg []byte, opts crypto.SignerOpts) (signature []byte, err error) {
+func (pk *RsaThalesPrivKey) Sign(rand io.Reader, msg []byte, opts crypto.SignerOpts) (signature []byte, err error) {
 
 	// Verify that the length of the hash is as expected
 	hash := opts.HashFunc()
@@ -178,7 +178,7 @@ func (pk *rsaThalesPrivKey) Sign(rand io.Reader, msg []byte, opts crypto.SignerO
 // ================================================================================
 //  Writes the private key data to filename with mode 0600
 // ================================================================================
-func (pk rsaThalesPrivKey) WritePrivateKeyToFile(filename string) error {
+func (pk RsaThalesPrivKey) WritePrivateKeyToFile(filename string) error {
 	if len(pk.pkeyBytes) == 0 {
 		return errors.New("thales9000: Invalid private key data")
 	}
@@ -187,7 +187,7 @@ func (pk rsaThalesPrivKey) WritePrivateKeyToFile(filename string) error {
 // ================================================================================
 //  Writes the public key data to filename with mode 0600
 // ================================================================================
-func (pk rsaThalesPrivKey) WritePublicKeyToFile(filename string) error {
+func (pk RsaThalesPrivKey) WritePublicKeyToFile(filename string) error {
 	var err error
 	var typ BlockType
 	var buf []byte
