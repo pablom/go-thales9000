@@ -13,6 +13,8 @@ import (
 	"crypto/sha1"
 	"fmt"
 	"strings"
+	"crypto/rand"
+	"bytes"
 )
 const (
 	TEST_THALES_HSM_HOST     string = "10.101.70.194:1500"
@@ -174,7 +176,7 @@ func xTestEncryptDecryptThales(t *testing.T) {
 // =============================================================================
 //  Thales test generate symmetric key commands
 // =============================================================================
-func TestThalesGenerateSymmetricKey(t *testing.T) {
+func xTestThalesGenerateSymmetricKey(t *testing.T) {
 	conn, err := net.DialTimeout("tcp", TEST_THALES_HSM_HOST, time.Duration(HSM_CONNECTION_TIMEOUT)*time.Second)
 	if err != nil {
 		t.Fatalf("[THALES]: Failed to HSM connect: %s\n", err)
@@ -217,4 +219,65 @@ func TestThalesGenerateMAC(t *testing.T) {
 		t.Fatalf("[THALES]: Couldn't verify MAC: %s\n", err)
 	}
 }
+// =============================================================================
+//  Thales test generate RSA signature for binary buffer
+// =============================================================================
+func xTestThalesGenerateRSASignature(t *testing.T) {
 
+	conn, err := net.DialTimeout("tcp", TEST_THALES_HSM_HOST, time.Duration(HSM_CONNECTION_TIMEOUT)*time.Second)
+	if err != nil {
+		t.Fatalf("[THALES]: Failed to HSM connect: %s\n", err)
+	}
+	defer conn.Close()
+
+	var msg = []byte {
+		0x59, 0x95, 0xBE, 0xE4, 0xDD, 0xBE, 0x0E, 0x84,
+		0x86, 0x56, 0xBE, 0x43, 0xD9, 0x19, 0xC0, 0x13,
+		0xBA, 0x9B, 0x6A, 0x54, 0x87, 0xCC, 0x1F, 0xB2,
+		0x19, 0x56, 0x13, 0x67, 0xAE, 0xD9, 0x1A, 0x9F,
+		0xE1, 0xA7, 0x20, 0xA5 }
+
+	_,_,privBytes, err := thalesGenerateRSAKeyPair(conn, 2048)
+	if err != nil {
+		t.Fatalf("[THALES]: Failed to generate RSA private/public (%d) key pairs: %s\n", 2048,err)
+	}
+
+	// Generate signature by HSM
+	_, err = thalesGenerateRSASignature(conn, msg, privBytes, THALES_NO_HASH_SIGN)
+	if err != nil {
+		t.Fatalf("[THALES]: Failed to generate RSA signature [No hash]: %s\n", err)
+	}
+}
+// =============================================================================
+//  Thales test decrypt by RSA private key
+// =============================================================================
+func TestThalesDecryptDataRSAPrivateKey(t *testing.T) {
+	conn, err := net.DialTimeout("tcp", TEST_THALES_HSM_HOST, time.Duration(HSM_CONNECTION_TIMEOUT)*time.Second)
+	if err != nil {
+		t.Fatalf("[THALES]: Failed to HSM connect: %s\n", err)
+	}
+	defer conn.Close()
+
+	key, err := CreateRSAKey(conn, 2048)
+	if err != nil {
+		t.Fatalf("[THALES]: Failed creating rsa key pair: %s\n", err)
+	}
+
+	// Test sign data
+	msg := []byte("Dummy encrypt message")
+
+	// Encrypt the data
+	enc, err := rsa.EncryptPKCS1v15(rand.Reader, key.Public().(*rsa.PublicKey), msg)
+	if err != nil {
+		t.Fatalf("[THALES]: Failed encrypt data by public key: %s\n", err)
+	}
+
+	dec,err := thalesDecryptDataBlockRSA(conn, enc, key.pkeyBytes)
+	if err != nil {
+		t.Fatalf("[THALES]: Failed decrypt data by private key: %s\n", err)
+	}
+
+	if !bytes.Equal(msg, dec[4:]) {
+		t.Fatalf("[THALES]: Invalid decrypt message: %s\n\texpected: %s\n", string(msg), string(dec[4:]))
+	}
+}
