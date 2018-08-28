@@ -8,7 +8,6 @@ import (
 	"encoding/asn1"
 	"crypto"
 	"errors"
-	"encoding/hex"
 )
 
 const (
@@ -23,7 +22,7 @@ const (
 )
 
 var hashThalesType = map[crypto.Hash] string {
-	crypto.SHA1:      	 "01",
+	crypto.SHA1:         "01",
 	crypto.MD5:          "02",
 	THALES_NO_HASH_SIGN: "04", // No Hash
 	crypto.SHA224:       "05",
@@ -178,7 +177,7 @@ func thalesValidateSignatureRSA(conn net.Conn, msg []byte, sign []byte, mac []by
 // =============================================================================
 //  Generate a Public/Private Key Pair (internal function)
 // =============================================================================
-func thalesGenerateRSAKeyPairReq(conn net.Conn, rsaBits int) ([]byte, error) {
+func thalesGenerateRSAKeyPairReq(conn net.Conn, rsaBits int, keyType int) ([]byte, error) {
 	const rqMsgID = "EI" // Request message ID
 	const rsMsgID = "EJ" // Response message ID
 
@@ -187,7 +186,12 @@ func thalesGenerateRSAKeyPairReq(conn net.Conn, rsaBits int) ([]byte, error) {
 
 	b.WriteString(THALES_HSM_HEADER)
 	b.WriteString(rqMsgID)
-	b.WriteString("4")         // Key Type indicator
+	b.WriteString(fmt.Sprintf("%1d", keyType)) // Key Type indicator
+	                   //   '0' : Signature only
+	                   //   '1' : Key management only
+	                   //   '2' : Both signature and key management
+	                   //   '3' : Integrated Chip Card (ICC) Key
+	                   //   '4' : allows general purpose decryption of data (e.g. TLS/SSL  premaster secret) – requires HSM9-LIC019
 	b.WriteString(fmt.Sprintf("%04d", rsaBits)) // Modulus length in bits
 	b.WriteString(THALES_PUB_KEY_ENCODING_ASN2)
 
@@ -207,7 +211,7 @@ func thalesGenerateRSAKeyPairReq(conn net.Conn, rsaBits int) ([]byte, error) {
 //  Generate a Public/Private Key Pair
 //  return Public Key ASN.1 DER bytes and 4 MAC bytes
 // =============================================================================
-func thalesGenerateRSAKeyPair(conn net.Conn, rsaBits int) ([]byte,[]byte,[]byte,error) {
+func thalesGenerateRSAKeyPair(conn net.Conn, rsaBits int, keyType int) ([]byte,[]byte,[]byte,error) {
 
 	var pubKey rsa.PublicKey
 
@@ -217,7 +221,7 @@ func thalesGenerateRSAKeyPair(conn net.Conn, rsaBits int) ([]byte,[]byte,[]byte,
 	}
 
 	// Try to generate RSA key pair
-	 b, err := thalesGenerateRSAKeyPairReq(conn, rsaBits)
+	 b, err := thalesGenerateRSAKeyPairReq(conn, rsaBits, keyType)
 	 if err != nil {
 		 return nil, nil, nil, err
 	 }
@@ -377,8 +381,6 @@ func thalesEncryptDataBlock(conn net.Conn, msg []byte, key string) ([]byte,error
 	b.WriteString(fmt.Sprintf("%04X", len(msg)))
 	b.Write(msg)
 
-	fmt.Println(hex.Dump(b.Bytes()))
-
 	// Send request
 	if err := sendThalesRequest(conn, b); err != nil {
 		return nil, err
@@ -394,7 +396,7 @@ func thalesEncryptDataBlock(conn net.Conn, msg []byte, key string) ([]byte,error
 // =============================================================================
 //  Decrypt Data Block
 // =============================================================================
-func thalesDecryptDataBlock(conn net.Conn, msg []byte, key string) ([]byte,error) {
+func thalesDecryptDataBlock(conn net.Conn, data []byte, key string) ([]byte,error) {
 	const rqMsgID = "M2" // Request message ID
 	const rsMsgID = "M3" // Response message ID
 	// leave 2 bytes at the start for length
@@ -404,9 +406,10 @@ func thalesDecryptDataBlock(conn net.Conn, msg []byte, key string) ([]byte,error
 	b.WriteString("00")  // encryption mode ECB
 	b.WriteString("0")   // format of the input message: Binary
 	b.WriteString("0")   // output format: Binary
-	b.WriteString("FFF")
+	b.WriteString("00A")
 	b.WriteString(key)
-	b.WriteString(fmt.Sprintf("%04X", len(msg)))
+	b.WriteString(fmt.Sprintf("%04X", len(data)))
+	b.Write(data)
 
 	// Send request
 	if err := sendThalesRequest(conn, b); err != nil {
@@ -433,10 +436,10 @@ func thalesDecryptDataBlockRSA(conn net.Conn, data []byte, privKey []byte) ([]by
 	b.WriteString("01")   // Identifier of algorithm used to decrypt the key: '01' : RSA
 	b.WriteString("01")   // Identifier of the Pad Mode used in the encryption process 01 : PKCS#1 v1.5 method (EME-PKCS1-v1_5)
 	b.WriteString("3400") // Key Type For data (e.g. TLS/SSL premaster) decryption with RSA Key
-							//Type Indicator '04' (requires LIC019), Key Type should have the value '3400'
+							 //Type Indicator '04' (requires LIC019), Key Type should have the value '3400'
 	b.WriteString(fmt.Sprintf("%04d", len(data)))
 	b.Write(data)
-	b.WriteString(";")   // Delimiter
+	b.WriteString(";")    // Delimiter
 	b.WriteString("99")
 	b.Write(privKey)
 

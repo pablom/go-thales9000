@@ -15,6 +15,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"os"
+	"crypto/elliptic"
 )
 
 const (
@@ -55,7 +56,57 @@ func pemBlockForKey(priv interface{}) *pem.Block {
 		return nil
 	}
 }
+// =============================================================================
+//  Thales test create self-sign certificate
+// =============================================================================
+func TestCreateSelfSignCertificate(t *testing.T) {
+	// priv, err := rsa.GenerateKey(rand.Reader, *rsaBits)
+	priv, err := ecdsa.GenerateKey(elliptic.P521(), rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	template := x509.Certificate{
+		SerialNumber: big.NewInt(1),
+		Subject: pkix.Name{
+			Organization: []string{"Acme Co"},
+		},
+		NotBefore: time.Now(),
+		NotAfter:  time.Now().Add(time.Hour * 24 * 180),
 
+		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		BasicConstraintsValid: true,
+	}
+
+	/*
+	   hosts := strings.Split(*host, ",")
+	   for _, h := range hosts {
+	   	if ip := net.ParseIP(h); ip != nil {
+	   		template.IPAddresses = append(template.IPAddresses, ip)
+	   	} else {
+	   		template.DNSNames = append(template.DNSNames, h)
+	   	}
+	   }
+	   if *isCA {
+	   	template.IsCA = true
+	   	template.KeyUsage |= x509.KeyUsageCertSign
+	   }
+	*/
+
+	derBytes, err := x509.CreateCertificate(rand.Reader, &template, &template, publicKey(priv), priv)
+	if err != nil {
+		t.Fatalf("Failed to create certificate: %s", err)
+	}
+	out := &bytes.Buffer{}
+	pem.Encode(out, &pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
+	fmt.Println(out.String())
+	out.Reset()
+	pem.Encode(out, pemBlockForKey(priv))
+	fmt.Println(out.String())
+}
+// =============================================================================
+//  Thales test create certificate request
+// =============================================================================
 func TestCreateCertificateSigningRequest(t *testing.T) {
 
 	conn, err := net.DialTimeout("tcp", TEST_THALES_HSM_HOST, time.Duration(HSM_CONNECTION_TIMEOUT)*time.Second)
@@ -65,12 +116,14 @@ func TestCreateCertificateSigningRequest(t *testing.T) {
 
 	defer conn.Close()
 
-	key, err := CreateRSAKey(conn, 1024)
+	key, err := CreateThalesRSAKey(conn, 1024, 0)
 	if err != nil {
 		t.Fatal("[THALES]: Failed creating rsa key pair:", err)
 	}
 
-	csr, err := CreateCertificateSigningRequest(key, csrHostname, nil, nil,
+	DNSNames := []string{"3ds.spb.openwaygroup.com", "3ds"}
+
+	csr, err := CreateCertificateSigningRequest(key, csrHostname, nil, DNSNames,
 		"example", "US", "California", "San Francisco", csrCN)
 
 	if err != nil {

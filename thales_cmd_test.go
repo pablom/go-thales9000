@@ -11,7 +11,6 @@ import (
 	"crypto/sha512"
 	"hash"
 	"crypto/sha1"
-	"fmt"
 	"strings"
 	"crypto/rand"
 	"bytes"
@@ -25,7 +24,7 @@ const (
 //  and by output public key by different key length
 // =============================================================================
 func verifySignatureRsaBitsTest(t *testing.T, conn net.Conn, rsaBits int) {
-	mac,pubBytes,privBytes, err := thalesGenerateRSAKeyPair(conn, rsaBits)
+	mac,pubBytes,privBytes, err := thalesGenerateRSAKeyPair(conn, rsaBits, 0)
 	if err != nil {
 		t.Fatalf("[THALES]: Failed to generate RSA private/public (%d) key pairs: %s\n", rsaBits,err)
 	}
@@ -133,7 +132,7 @@ func TestGenerateThalesRSAkeyPair(t *testing.T) {
 	}
 	defer conn.Close()
 
-	key, err := CreateRSAKey(conn, 1024)
+	key, err := CreateThalesRSAKey(conn, 1024, 0)
 	if err != nil {
 		t.Fatalf("[THALES]: Failed creating rsa key pair: %s\n", err)
 	}
@@ -150,28 +149,32 @@ func TestGenerateThalesRSAkeyPair(t *testing.T) {
 		t.Fatalf("[THALES]: Failed to verify RSA signature by output private key: %s\n", err)
 	}
 }
-
-func xTestEncryptDecryptThales(t *testing.T) {
+// =============================================================================
+//  Thales test encrypt/decrypt by symmetric key commands
+// =============================================================================
+func TestEncryptDecryptThales(t *testing.T) {
 	conn, err := net.DialTimeout("tcp", TEST_THALES_HSM_HOST, time.Duration(HSM_CONNECTION_TIMEOUT)*time.Second)
 	if err != nil {
 		t.Fatalf("[THALES]: Failed to HSM connect: %s\n", err)
 	}
 	defer conn.Close()
 
-	key := "U35008F52E8B5F4CF0DB0FBF4E516EDDB"
-	msg := []byte("MMM-VVV0")
+	key := "U71CE6CBA2A7DC746F6151DA0F0ED5A10"  // ZEK(00A) key type
+	msg := []byte("DummyMsg")
 
 	data, err := thalesEncryptDataBlock(conn, msg, key)
 	if err != nil {
 		t.Fatalf("[THALES]: Couldn't ecrypt data block: %s\n", err)
 	}
 
-	out_msg, err := thalesDecryptDataBlock(conn, data, key)
+	out_msg, err := thalesDecryptDataBlock(conn, data[4:], key)
 	if err != nil {
 		t.Fatalf("[THALES]: Couldn't decrypt data block: %s\n", err)
 	}
 
-	fmt.Println(out_msg)
+	if !bytes.Equal(msg, out_msg[4:]) {
+		t.Fatalf("[THALES]: Invalid decrypt message: %s\n\texpected: %s\n", string(out_msg[4:]), string(msg) )
+	}
 }
 // =============================================================================
 //  Thales test generate symmetric key commands
@@ -222,7 +225,7 @@ func TestThalesGenerateMAC(t *testing.T) {
 // =============================================================================
 //  Thales test generate RSA signature for binary buffer
 // =============================================================================
-func xTestThalesGenerateRSASignature(t *testing.T) {
+func TestThalesGenerateRSASignature(t *testing.T) {
 
 	conn, err := net.DialTimeout("tcp", TEST_THALES_HSM_HOST, time.Duration(HSM_CONNECTION_TIMEOUT)*time.Second)
 	if err != nil {
@@ -237,7 +240,7 @@ func xTestThalesGenerateRSASignature(t *testing.T) {
 		0x19, 0x56, 0x13, 0x67, 0xAE, 0xD9, 0x1A, 0x9F,
 		0xE1, 0xA7, 0x20, 0xA5 }
 
-	_,_,privBytes, err := thalesGenerateRSAKeyPair(conn, 2048)
+	_,_,privBytes, err := thalesGenerateRSAKeyPair(conn, 2048, 0)
 	if err != nil {
 		t.Fatalf("[THALES]: Failed to generate RSA private/public (%d) key pairs: %s\n", 2048,err)
 	}
@@ -258,7 +261,7 @@ func TestThalesDecryptDataRSAPrivateKey(t *testing.T) {
 	}
 	defer conn.Close()
 
-	key, err := CreateRSAKey(conn, 2048)
+	key, err := CreateThalesRSAKey(conn, 2048, 4)
 	if err != nil {
 		t.Fatalf("[THALES]: Failed creating rsa key pair: %s\n", err)
 	}
@@ -266,7 +269,7 @@ func TestThalesDecryptDataRSAPrivateKey(t *testing.T) {
 	// Test sign data
 	msg := []byte("Dummy encrypt message")
 
-	// Encrypt the data
+	// Encrypt the data by public key
 	enc, err := rsa.EncryptPKCS1v15(rand.Reader, key.Public().(*rsa.PublicKey), msg)
 	if err != nil {
 		t.Fatalf("[THALES]: Failed encrypt data by public key: %s\n", err)
@@ -278,6 +281,6 @@ func TestThalesDecryptDataRSAPrivateKey(t *testing.T) {
 	}
 
 	if !bytes.Equal(msg, dec[4:]) {
-		t.Fatalf("[THALES]: Invalid decrypt message: %s\n\texpected: %s\n", string(msg), string(dec[4:]))
+		t.Fatalf("[THALES]: Invalid decrypt message: %s\n\texpected: %s\n", string(dec[4:]), string(msg))
 	}
 }

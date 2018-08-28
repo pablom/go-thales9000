@@ -26,7 +26,7 @@ func TestCreateRSAPrivateKey(t *testing.T) {
 
 	defer conn.Close()
 
-	key, err := CreateRSAKey(conn, 1024)
+	key, err := CreateThalesRSAKey(conn, 1024, 0)
 	if err != nil {
 		t.Fatal("[THALES]: Failed creating rsa key pair:", err)
 	}

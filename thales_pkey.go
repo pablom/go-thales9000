@@ -34,28 +34,28 @@ func (bt BlockType) String() string {
 
 const (
 	// PrivateKey is the "PRIVATE KEY" block type.
-	PrivateKey BlockType = "PRIVATE KEY"
+	PrivateKeyBlock BlockType = "PRIVATE KEY"
 
 	// RSAPrivateKey is the "RSA PRIVATE KEY" block type.
-	RSAPrivateKey BlockType = "RSA PRIVATE KEY"
+	RSAPrivateKeyBlock BlockType = "RSA PRIVATE KEY"
 
 	// ECPrivateKey is the "EC PRIVATE KEY" block type.
-	ECPrivateKey BlockType = "EC PRIVATE KEY"
+	ECPrivateKeyBlock BlockType = "EC PRIVATE KEY"
 
 	// PublicKey is the "PUBLIC KEY" block type.
-	PublicKey BlockType = "PUBLIC KEY"
+	PublicKeyBlock BlockType = "PUBLIC KEY"
 
 	// Certificate is the "CERTIFICATE" block type.
-	Certificate BlockType = "CERTIFICATE"
+	CertificateBlock BlockType = "CERTIFICATE"
 )
 
 // =============================================================================
 //   CreateRSAKey creates a new Thales key using RSA algorithm
 // =============================================================================
-func CreateRSAKey(conn net.Conn, rsaBits int) (*RsaThalesPrivKey, error) {
+func CreateThalesRSAKey(conn net.Conn, rsaBits int, keyType int) (*RsaThalesPrivKey, error) {
 
 	/* Generate private - public key pair, skip mac response  */
-	_, pubBytes, privBytes, err := thalesGenerateRSAKeyPair(conn, rsaBits)
+	_, pubBytes, privBytes, err := thalesGenerateRSAKeyPair(conn, rsaBits, keyType)
 	if err != nil {
 		return nil, err
 	}
@@ -106,7 +106,7 @@ func NewThalesPrivKeyFromFiles(publicKeyPath, privateKeyPath string, c net.Conn)
 			return nil, errors.New("thales9000: invalid PEM data")
 		}
 
-		if BlockType(block.Type) != PublicKey {
+		if BlockType(block.Type) != PublicKeyBlock {
 			return nil, errors.New("thales9000: invalid PEM block type")
 		}
 
@@ -194,7 +194,7 @@ func (pk RsaThalesPrivKey) WritePublicKeyToFile(filename string) error {
 
 	switch v := pk.Public().(type) {
 		case *rsa.PublicKey, *ecdsa.PublicKey:
-			typ = PublicKey
+			typ = PublicKeyBlock
 			buf, err = x509.MarshalPKIXPublicKey(v)
 			if err != nil {
 				return err

@@ -179,8 +179,6 @@ func CsrToCrt( caCrtFile string, caKeyFile string, csrFile, outCrtFile string, p
 		return err
 	}
 
-
-
 	// create client certificate template
 	clientCRTTemplate := x509.Certificate{
 		Signature:          clientCSR.Signature,

@@ -95,10 +95,10 @@ func CreateCertificateSigningRequest( key *RsaThalesPrivKey, organizationalUnit 
 func NewCertificateSigningRequestFromPEM(data []byte) (*CertificateSigningRequest, error) {
 	pemBlock, _ := pem.Decode(data)
 	if pemBlock == nil {
-		return nil, errors.New("cannot find the next PEM formatted block")
+		return nil, errors.New("thales9000: cannot find the next PEM formatted block")
 	}
 	if (pemBlock.Type != csrPEMBlockType && pemBlock.Type != oldCsrPEMBlockType) || len(pemBlock.Headers) != 0 {
-		return nil, errors.New("unmatched type or headers")
+		return nil, errors.New("thales9000: unmatched type or headers")
 	}
 	return &CertificateSigningRequest{derBytes: pemBlock.Bytes}, nil
 }
