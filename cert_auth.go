@@ -28,11 +28,12 @@ var (
 		SerialNumber:       "",
 		CommonName:         "",
 	}
+
 	// Build CA based on RFC5280
 	authTemplate = x509.Certificate{
 		SerialNumber: big.NewInt(1),
 		Subject:      authPkixName,
-		// NotBefore is set to be 10min earlier to fix gap on time difference in cluster
+		// NotBefore is set to be 10min earlier to fix gap on time difference
 		NotBefore: time.Now().Add(-600).UTC(),
 		NotAfter:  time.Time{},
 		// Used for certificate signing only

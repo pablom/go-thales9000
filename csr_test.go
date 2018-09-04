@@ -99,10 +99,10 @@ func TestCreateSelfSignCertificate(t *testing.T) {
 	}
 	out := &bytes.Buffer{}
 	pem.Encode(out, &pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
-	fmt.Println(out.String())
+	//fmt.Println(out.String())
 	out.Reset()
 	pem.Encode(out, pemBlockForKey(priv))
-	fmt.Println(out.String())
+	//fmt.Println(out.String())
 }
 // =============================================================================
 //  Thales test create certificate request

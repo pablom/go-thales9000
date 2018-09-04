@@ -7,6 +7,12 @@ import (
 	"time"
 )
 
+const (
+	ROOT_CA_PATH     string = "sslCA"
+	ROOT_CA_CERT_NAME  string  = "owroot_thales.crt"
+	ROOT_CA_KEY_NAME   string  = "owroot_thales.key"
+)
+
 func TestCreateCertificateAuthority(t *testing.T) {
 	key, err := CreateRSAKey(2048)
 	if err != nil {
@@ -37,4 +43,12 @@ func TestCreateCertificateAuthority(t *testing.T) {
 	if !time.Now().Before(rawCrt.NotAfter) {
 		t.Fatal("Failed to be before NotAfter")
 	}
+}
+
+func TestCreateRootCertificateAuthority(t *testing.T) {
+
+	if err := CreateNewRootCA(ROOT_CA_PATH, ROOT_CA_CERT_NAME, ROOT_CA_KEY_NAME); err != nil {
+		t.Fatal("Failed to create root CA Thales test certificate authority")
+	}
+
 }

@@ -2,17 +2,18 @@ package thales9000
 
 import (
 	"crypto"
-	"io"
-	"fmt"
-	"crypto/rsa"
-	"net"
-	"encoding/asn1"
-	"errors"
-	"crypto/x509"
 	"crypto/ecdsa"
+	"crypto/rsa"
+	"crypto/x509"
+	"encoding/asn1"
 	"encoding/pem"
+	"errors"
+	"fmt"
+	"io"
 	"io/ioutil"
+	"net"
 )
+
 var hashPrefixes = map[crypto.Hash][]byte{
 	crypto.MD5:       {0x30, 0x20, 0x30, 0x0c, 0x06, 0x08, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x02, 0x05, 0x05, 0x00, 0x04, 0x10},
 	crypto.SHA1:      {0x30, 0x21, 0x30, 0x09, 0x06, 0x05, 0x2b, 0x0e, 0x03, 0x02, 0x1a, 0x05, 0x00, 0x04, 0x14},
@@ -84,7 +85,7 @@ type RsaThalesPrivKey struct {
 // =============================================================================
 //  New instantiates a new Thales private key
 // =============================================================================
-func NewThalesPrivKey(cryptoPublicKey *rsa.PublicKey, privBytes []byte, c net.Conn) (*RsaThalesPrivKey) {
+func NewThalesPrivKey(cryptoPublicKey *rsa.PublicKey, privBytes []byte, c net.Conn) *RsaThalesPrivKey {
 	return &RsaThalesPrivKey{cryptoPublicKey, privBytes, c}
 }
 // =============================================================================
@@ -158,7 +159,8 @@ func (pk *RsaThalesPrivKey) Sign(rand io.Reader, msg []byte, opts crypto.SignerO
 			return
 		}
 
-		prefix, ok := hashPrefixes[hash]; if !ok {
+		prefix, ok := hashPrefixes[hash]
+		if !ok {
 			err = errors.New("thales9000: unknown hash prefix")
 			return
 		}
@@ -175,6 +177,7 @@ func (pk *RsaThalesPrivKey) Sign(rand io.Reader, msg []byte, opts crypto.SignerO
 	/* Skip first 4 bytes as signature length */
 	return signature[4:], nil
 }
+
 // ================================================================================
 //  Writes the private key data to filename with mode 0600
 // ================================================================================
@@ -193,15 +196,14 @@ func (pk RsaThalesPrivKey) WritePublicKeyToFile(filename string) error {
 	var buf []byte
 
 	switch v := pk.Public().(type) {
-		case *rsa.PublicKey, *ecdsa.PublicKey:
-			typ = PublicKeyBlock
-			buf, err = x509.MarshalPKIXPublicKey(v)
-			if err != nil {
-				return err
-			}
+	case *rsa.PublicKey, *ecdsa.PublicKey:
+		typ = PublicKeyBlock
+		if buf, err = x509.MarshalPKIXPublicKey(v); err != nil {
+			return err
+		}
 
-		default:
-			return errors.New("thales9000: unsupported crypto primitive")
+	default:
+		return errors.New("thales9000: unsupported crypto primitive")
 	}
 
 	b := pem.EncodeToMemory(&pem.Block{
@@ -210,4 +212,10 @@ func (pk RsaThalesPrivKey) WritePublicKeyToFile(filename string) error {
 	})
 
 	return ioutil.WriteFile(filename, b, 0600)
+}
+// ================================================================================
+//  Writes the public key data to filename with mode 0600
+// ================================================================================
+func (pk RsaThalesPrivKey) PrivateKeyBytes() []byte {
+	return pk.pkeyBytes
 }

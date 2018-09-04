@@ -194,9 +194,12 @@ func CsrToCrt( caCrtFile string, caKeyFile string, csrFile, outCrtFile string, p
 		NotBefore:    time.Now().Add(-600).UTC(),
 		//NotAfter:     time.Now().Add(24 * time.Hour),
 		NotAfter:     caCRT.NotAfter,
-		KeyUsage:     x509.KeyUsageDigitalSignature,
-		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
+		KeyUsage:     x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment,
+		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
 	}
+
+	//ExtKeyUsage: x509.ExtKeyUsageServerAuth,
+	//KeyUsage = x509.ExtKeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment,
 
 	// create client certificate from template and CA public key
 	clientCRTRaw, err := x509.CreateCertificate(rand.Reader, &clientCRTTemplate, caCRT, clientCSR.PublicKey, caPrivateKey)

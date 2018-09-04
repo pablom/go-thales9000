@@ -9,6 +9,15 @@ import (
 	"errors"
 	"fmt"
 	"time"
+	"crypto/rsa"
+	"crypto/rand"
+	"math/big"
+	"crypto/x509/pkix"
+	"encoding/asn1"
+	"crypto/sha1"
+	"io/ioutil"
+	"path/filepath"
+	"log"
 )
 
 const (
@@ -145,4 +154,82 @@ func (c *Certificate) Export() ([]byte, error) {
 		return nil, err
 	}
 	return buf.Bytes(), nil
+}
+
+func CreateNewRootCA( caPath, caCertFileName, caKeyFileName string ) error {
+	priv, err := rsa.GenerateKey(rand.Reader, 3072)
+	if err != nil {
+		return err // failed to generate the CA key
+	}
+
+	pub := priv.PublicKey
+
+	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
+	serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
+	if err != nil {
+		return err // failed to generate serial number
+	}
+
+	spkiASN1, err := x509.MarshalPKIXPublicKey(&pub)
+	if err != nil {
+		return err // failed to encode public key
+	}
+
+	var spki struct {
+		Algorithm        pkix.AlgorithmIdentifier
+		SubjectPublicKey asn1.BitString
+	}
+	_, err = asn1.Unmarshal(spkiASN1, &spki)
+	if err != nil {
+		return err // failed to decode public key
+	}
+
+	skid := sha1.Sum(spki.SubjectPublicKey.Bytes)
+
+	tpl := &x509.Certificate{
+		SerialNumber: serialNumber,
+		Subject: pkix.Name{
+			Organization:       []string{"OpenWay TDS development CA"},
+			OrganizationalUnit: []string{"OpenWay Development"},
+
+			// The CommonName is required by iOS to show the certificate in the
+			// "Certificate Trust Settings" menu.
+			CommonName: "OWROOT Thales",
+		},
+		SubjectKeyId: skid[:],
+
+		NotAfter:  time.Now().AddDate(10, 0, 0),
+		NotBefore: time.Now(),
+
+		KeyUsage: x509.KeyUsageCertSign,
+
+		BasicConstraintsValid: true,
+		IsCA:           true,
+		MaxPathLenZero: true,
+	}
+
+	cert, err := x509.CreateCertificate(rand.Reader, tpl, tpl, &pub, priv)
+	if err != nil {
+		return err // failed to generate CA certificate
+	}
+
+	privDER, err := x509.MarshalPKCS8PrivateKey(priv)
+	if err != nil {
+		return err // failed to encode CA key
+	}
+
+	err = ioutil.WriteFile(filepath.Join(caPath, caKeyFileName), pem.EncodeToMemory(
+		&pem.Block{Type: "PRIVATE KEY", Bytes: privDER}), 0400)
+	if err != nil {
+		return err // failed to save CA key
+	}
+
+	err = ioutil.WriteFile(filepath.Join(caPath, caCertFileName), pem.EncodeToMemory(
+		&pem.Block{Type: "CERTIFICATE", Bytes: cert}), 0644)
+	if err != nil {
+		return err // failed to save CA certificate
+	}
+
+	log.Printf("Created a new local CA at \"%s\" 💥\n", caPath)
+	return nil
 }

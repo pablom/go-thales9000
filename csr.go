@@ -1,18 +1,18 @@
 package thales9000
 
 import (
-	"net"
-	"errors"
-	"crypto/x509"
-	"crypto/rand"
-	"crypto/x509/pkix"
-	"encoding/pem"
-	"crypto"
-	"crypto/rsa"
-	"crypto/ecdsa"
-	"math/big"
-	"encoding/asn1"
 	"bytes"
+	"crypto"
+	"crypto/ecdsa"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
+	"crypto/x509/pkix"
+	"encoding/asn1"
+	"encoding/pem"
+	"errors"
+	"math/big"
+	"net"
 )
 
 const (
@@ -33,6 +33,7 @@ var (
 		CommonName:         "",
 	}
 )
+
 // =============================================================================
 //  CertificateSigningRequest is a wrapper around a x509 CertificateRequest
 //  and its DER-formatted bytes
@@ -43,6 +44,7 @@ type CertificateSigningRequest struct {
 
 	cr *x509.CertificateRequest
 }
+
 // =============================================================================
 //  NewCertificateSigningRequestFromDER inits CertificateSigningRequest
 // from DER-format bytes
@@ -50,13 +52,14 @@ type CertificateSigningRequest struct {
 func NewCertificateSigningRequestFromDER(derBytes []byte) *CertificateSigningRequest {
 	return &CertificateSigningRequest{derBytes: derBytes}
 }
+
 // =============================================================================
 //  CreateCertificateSigningRequest sets up a request to create a csr file
 //  with the given parameters
 // =============================================================================
-func CreateCertificateSigningRequest( key *RsaThalesPrivKey, organizationalUnit string, ipList []net.IP,
-                                      domainList []string, organization string, country string, province string,
-                                      locality string, commonName string) (*CertificateSigningRequest, error) {
+func CreateCertificateSigningRequest(key *RsaThalesPrivKey, organizationalUnit string, ipList []net.IP,
+	domainList []string, organization string, country string, province string,
+	locality string, commonName string) (*CertificateSigningRequest, error) {
 
 	csrPkixName.CommonName = commonName
 
@@ -88,6 +91,7 @@ func CreateCertificateSigningRequest( key *RsaThalesPrivKey, organizationalUnit 
 	}
 	return NewCertificateSigningRequestFromDER(csrBytes), nil
 }
+
 // =============================================================================
 //  NewCertificateSigningRequestFromPEM inits CertificateSigningRequest from
 // PEM-format bytes data should contain at most one certificate
@@ -102,6 +106,7 @@ func NewCertificateSigningRequestFromPEM(data []byte) (*CertificateSigningReques
 	}
 	return &CertificateSigningRequest{derBytes: pemBlock.Bytes}, nil
 }
+
 // =============================================================================
 //  build cr field if needed
 // =============================================================================
@@ -117,6 +122,7 @@ func (c *CertificateSigningRequest) buildPKCS10CertificateSigningRequest() error
 	}
 	return nil
 }
+
 // =============================================================================
 //  GetRawCertificateSigningRequest returns a copy of this certificate request
 //  as an x509.CertificateRequest
@@ -127,6 +133,7 @@ func (c *CertificateSigningRequest) GetRawCertificateSigningRequest() (*x509.Cer
 	}
 	return c.cr, nil
 }
+
 // =============================================================================
 //  CheckSignature verifies that the signature is a valid signature
 //  using the public key in CertificateSigningRequest
@@ -137,6 +144,7 @@ func (c *CertificateSigningRequest) CheckSignature() error {
 	}
 	return checkSignature(c.cr, c.cr.SignatureAlgorithm, c.cr.RawTBSCertificateRequest, c.cr.Signature)
 }
+
 // =============================================================================
 //  checkSignature verifies a signature made by the key on a CSR, such
 //  as on the CSR itself
@@ -179,6 +187,7 @@ func checkSignature(csr *x509.CertificateRequest, algo x509.SignatureAlgorithm, 
 	}
 	return x509.ErrUnsupportedAlgorithm
 }
+
 // =============================================================================
 //  Export returns PEM-format bytes
 // =============================================================================
